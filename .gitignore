@@ -1,0 +1,63 @@
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio 2015+ cache/options
+.vs/
+*.user
+*.vsixstate
+*.vsconfig
+
+# Visual Studio 2017 cache/options
+.vscode/
+.vscode/
+*.vscode-test/
+
+# NuGet Packages
+packages/
+*.nupkg
+
+# Visual Studio Code
+.vscode/
+.vscode/
+
+# ReSharper
+ReSharper.*
+*.DotSettings
+
+# Visual Studio 2017+ directories
+.vs/
+.vscode/
+
+# TeamCity
+*.teamcity*
+
+# Rider
+.idea/
+
+# Visual Studio Code
+.vscode/
+.vscode/
+
+# Azure
+*.dll
+*.pdb
+*.runtimeconfig.json
+*.deps.json
+
+# Data directory
+data/
+*.db
+.DS_Store
+outdir/*.json
+az900-questions.json
