@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact-name: linux-x64
+          - os: windows-latest
+            rid: win-x64
+            artifact-name: win-x64
+          - os: macos-latest
+            rid: osx-x64
+            artifact-name: osx-x64
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --no-restore -c Release
+
+    - name: Publish
+      run: dotnet publish --no-build -c Release -r ${{ matrix.rid }} --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o ./publish/${{ matrix.artifact-name }}
+
+    - name: Archive artifacts (Linux/macOS)
+      if: matrix.os != 'windows-latest'
+      shell: bash
+      run: |
+        cd publish/${{ matrix.artifact-name }}
+        zip -r ../../${{ matrix.artifact-name }}.zip *
+        cd ../..
+
+    - name: Archive artifacts (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        Compress-Archive -Path "publish/${{ matrix.artifact-name }}/*" -DestinationPath "${{ matrix.artifact-name }}.zip" -Force
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact-name }}
+        path: ${{ matrix.artifact-name }}.zip
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Determine version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: Release ${{ steps.version.outputs.version }}
+        body: |
+          ## Release ${{ steps.version.outputs.version }}
+          
+          ### Downloads
+          - **Linux x64**: `linux-x64.zip`
+          - **Windows x64**: `win-x64.zip`
+          - **macOS x64**: `osx-x64.zip`
+          
+          ### Usage
+          Extract the archive for your platform and run the executable.
+        files: |
+          artifacts/linux-x64/linux-x64.zip
+          artifacts/win-x64/win-x64.zip
+          artifacts/osx-x64/osx-x64.zip
+        draft: false
+        prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
