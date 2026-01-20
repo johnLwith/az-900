@@ -76,10 +76,27 @@ jobs:
       id: version
       run: |
         if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          VERSION="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            echo "Error: Version input is required for manual workflow dispatch"
+            exit 1
+          fi
         else
-          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          # Use github.ref_name which is cleaner for tags
+          VERSION="${{ github.ref_name }}"
+          if [ -z "$VERSION" ]; then
+            # Fallback to extracting from GITHUB_REF
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
         fi
+        
+        # Validate version format (should start with v)
+        if [[ ! "$VERSION" =~ ^v[0-9] ]]; then
+          echo "Warning: Version should start with 'v' followed by a number (e.g., v1.0.0)"
+        fi
+        
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Determined version: $VERSION"
 
     - name: Download all artifacts
       uses: actions/download-artifact@v4
